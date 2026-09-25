@@ -1,6 +1,7 @@
 """
 config.py — FoodMetric USA Taxonomy & Filter Rules (Revised for 2026 Trends)
 """
+
 CATEGORIES = {
     "savory-snack-plates": {
         "name": "Savory Snack Plates, Pickle Plates & Briny Snacks",
@@ -203,6 +204,7 @@ CATEGORIES = {
         "base_volume": 19000, # Highly visual fruit and frozen-snack formats
     }
 }
+
 # Exclusion list to filter out packaging, plastics, apparel, electronics,
 # kitchen accessories, and non-food dropshipping junk that can falsely
 # trigger food-related TikTok Shop searches.
@@ -222,6 +224,7 @@ BLACKLIST_KEYWORDS = [
     "recipe book", "cookbook", "digital download",
     "ebook", "pdf", "course", "template"
 ]
+
 # Currency & Pricing Logic in USD
 PRICE_FLOOR_USD = 2.00       # Filter out samples, digital items, or junk
 PRICE_CEILING_USD = 150.00   # Filter out bulk wholesale or high-end non-food products
