@@ -11,10 +11,11 @@ import { DailyTarotModal } from "@/components/DailyTarotModal";
 import { StickyMobileBar } from "@/components/StickyMobileBar";
 import { DashboardData, CategoryFilterId, ProductItem } from "@/types";
 import { formatNumber } from "@/lib/utils";
-import { Flame, Package, Tag, Share2, Check } from "lucide-react";
+import { Flame, Package, Tag, Share2, Check, AlertCircle } from "lucide-react";
 import initialData from "@/public/data/leaderboard_latest.json";
 
-const UNDER_50_PRICE_THRESHOLD = 50000; // in cents ($500.00)
+// FIXED: $5.00 = 500 cents. (Previously 50000 = $500.00, which mismatched the UI label)
+const UNDER_5_PRICE_THRESHOLD = 500; 
 const TIKTOK_HANDLE = "@foodlenlut";
 const TIKTOK_URL = `https://www.tiktok.com/${TIKTOK_HANDLE}`;
 
@@ -23,6 +24,7 @@ export default function HomePage() {
     initialData as unknown as DashboardData
   );
   const [searchQuery, setSearchQuery] = useState<string>("");
+  const [debouncedQuery, setDebouncedQuery] = useState<string>("");
   const [activeCategory, setActiveCategory] =
     useState<CategoryFilterId>("all");
   const [selectedProduct, setSelectedProduct] =
@@ -30,21 +32,27 @@ export default function HomePage() {
   const [isRandomModalOpen, setIsRandomModalOpen] = useState<boolean>(false);
   const [isTarotModalOpen, setIsTarotModalOpen] = useState<boolean>(false);
   const [shareCopied, setShareCopied] = useState<boolean>(false);
+  const [fetchError, setFetchError] = useState<string | null>(null);
 
-  const handleSelectProduct = useCallback((product: ProductItem | null) => {
-    setIsRandomModalOpen(false);
-    setIsTarotModalOpen(false);
-    setSelectedProduct(product);
-  }, []);
+  // Debounce search input to prevent excessive re-filtering
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedQuery(searchQuery), 300);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
 
-  const handleSelectProductById = useCallback(
-    (productId: string) => {
+  // Unified product selection handler (accepts ProductItem or product_id string)
+  const handleSelectProduct = useCallback(
+    (productOrId: ProductItem | string | null) => {
+      setIsRandomModalOpen(false);
       setIsTarotModalOpen(false);
-      const found = data?.leaderboard?.find(
-        (p) => p.product_id === productId
-      );
-      if (found) {
-        setSelectedProduct(found);
+
+      if (typeof productOrId === "string") {
+        const found = data?.leaderboard?.find(
+          (p) => p.product_id === productOrId
+        );
+        setSelectedProduct(found || null);
+      } else {
+        setSelectedProduct(productOrId);
       }
     },
     [data]
@@ -73,10 +81,13 @@ export default function HomePage() {
         if (res.ok) {
           const json: DashboardData = await res.json();
           setData(json);
+          setFetchError(null);
+        } else {
+          setFetchError("Failed to load live data. Showing cached version.");
         }
       } catch (err) {
         if ((err as Error).name !== "AbortError") {
-          // Fallback to initialData
+          setFetchError("Network error. Showing cached version.");
         }
       }
     };
@@ -87,7 +98,7 @@ export default function HomePage() {
   const categoryCounts = useMemo<Record<CategoryFilterId, number>>(() => {
     const counts: Record<CategoryFilterId, number> = {
       all: 0,
-      "under-50k": 0,
+      "under-50k": 0, // Note: The ID is "under-50k" but logic now checks under $5
       "banh-trang": 0,
       "kho-cac-loai": 0,
       "do-uong": 0,
@@ -99,9 +110,11 @@ export default function HomePage() {
 
     counts.all = data.leaderboard.length;
     for (const item of data.leaderboard) {
-      if (item.current_price <= UNDER_50_PRICE_THRESHOLD) {
+      // Count under-$5 items (using the corrected threshold)
+      if (item.current_price <= UNDER_5_PRICE_THRESHOLD) {
         counts["under-50k"]++;
       }
+      // Count by specific category
       if (item.category_slug in counts) {
         counts[item.category_slug as CategoryFilterId]++;
       }
@@ -112,11 +125,12 @@ export default function HomePage() {
   const filteredProducts = useMemo<ProductItem[]>(() => {
     if (!data?.leaderboard) return [];
 
-    const query = searchQuery.toLowerCase().trim();
+    const query = debouncedQuery.toLowerCase().trim();
 
     return data.leaderboard.filter((item) => {
+      // Category filter
       if (activeCategory === "under-50k") {
-        if (item.current_price > UNDER_50_PRICE_THRESHOLD) return false;
+        if (item.current_price > UNDER_5_PRICE_THRESHOLD) return false;
       } else if (
         activeCategory !== "all" &&
         item.category_slug !== activeCategory
@@ -124,6 +138,7 @@ export default function HomePage() {
         return false;
       }
 
+      // Search filter
       if (query) {
         return (
           item.product_name.toLowerCase().includes(query) ||
@@ -134,7 +149,7 @@ export default function HomePage() {
 
       return true;
     });
-  }, [data, activeCategory, searchQuery]);
+  }, [data, activeCategory, debouncedQuery]);
 
   const categoryNames = useMemo<Record<string, string>>(() => {
     if (!data?.categories) return {};
@@ -145,10 +160,10 @@ export default function HomePage() {
     return map;
   }, [data]);
 
-  const under50kCount = useMemo(() => {
+  const under5Count = useMemo(() => {
     if (!data?.leaderboard) return 0;
     return data.leaderboard.filter(
-      (p) => p.current_price <= UNDER_50_PRICE_THRESHOLD
+      (p) => p.current_price <= UNDER_5_PRICE_THRESHOLD
     ).length;
   }, [data]);
 
@@ -171,6 +186,7 @@ export default function HomePage() {
       }
     }
 
+    // Fallback to clipboard
     if (navigator.clipboard) {
       try {
         await navigator.clipboard.writeText(window.location.href);
@@ -194,6 +210,14 @@ export default function HomePage() {
       />
 
       <main className="mx-auto flex-1 w-full max-w-container px-4 py-6 sm:px-6 sm:py-8 space-y-6 pb-24 md:pb-12">
+        {/* Fetch Error Banner */}
+        {fetchError && (
+          <div className="flex items-center gap-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+            <AlertCircle className="h-4 w-4 shrink-0" />
+            <span>{fetchError}</span>
+          </div>
+        )}
+
         {/* Hero Section */}
         <section className="relative overflow-hidden rounded-3xl border border-slate-200 bg-white p-6 sm:p-8 shadow-xs">
           <div className="relative z-10 flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
@@ -249,7 +273,7 @@ export default function HomePage() {
                   <span>Under $5 Picks</span>
                 </div>
                 <div className="mt-1 text-lg sm:text-2xl font-extrabold font-lexend text-slate-900">
-                  {under50kCount} Items
+                  {under5Count} Items
                 </div>
                 <div className="text-[10px] text-slate-400">
                   Budget-friendly &amp; tasty
@@ -343,7 +367,7 @@ export default function HomePage() {
       <DailyTarotModal
         isOpen={isTarotModalOpen}
         onClose={() => setIsTarotModalOpen(false)}
-        onSelectProductById={handleSelectProductById}
+        onSelectProductById={handleSelectProduct} // Now accepts ID directly via unified handler
       />
 
       <footer className="mt-12 border-t border-slate-200 bg-white py-6 text-center text-xs text-slate-500">
