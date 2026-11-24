@@ -43,8 +43,8 @@ export interface BentoViralHook {
 }
 
 export interface BentoKPIs {
-  top_gmv_product: ProductItem;
-  fastest_growth_product: ProductItem;
+  top_gmv_product: ProductItem | null;
+  fastest_growth_product: ProductItem | null;
   top_category: BentoTopCategory;
   top_viral_hook: BentoViralHook;
 }
@@ -64,16 +64,4 @@ export interface DashboardData {
   leaderboard: ProductItem[];
 }
 
-export type CategoryFilterId =
-  | "all"
-  | "under-50k"
-  | "banh-trang"
-  | "kho-cac-loai"
-  | "do-uong"
-  | "an-vat-khac"
-  | "com-chay";
-
-export interface CategoryTabItem {
-  id: CategoryFilterId;
-  label: string;
-}
+export type CategoryFilterId = "all" | "under-10" | "chips-crackers" | "jerky-protein" | "candy-sweets" | "beverages" | "other-snacks";

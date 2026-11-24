@@ -1,0 +1,22 @@
+[
+  {
+    "market": "US",
+    "language": "en",
+    "currency": "USD",
+    "product_id": "test-001",
+    "product_name": "Test Spicy Chips",
+    "category_slug": "chips-crackers",
+    "shop_id": "test-shop",
+    "shop_name": "Demo Snack Shop",
+    "current_price": 599,
+    "historical_sold": 0,
+    "estimated_daily_units": 0,
+    "review_count": 0,
+    "product_rating": 0,
+    "is_shop_official": false,
+    "anomaly_flag": false,
+    "affiliate_url": "https://www.tiktok.com/shop",
+    "image_url": "",
+    "video_url": ""
+  }
+]
